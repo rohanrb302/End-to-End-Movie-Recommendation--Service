@@ -1,0 +1,6 @@
+kafka
+psycopg2-binary
+sqlalchemy
+scanf
+pandas
+boto3

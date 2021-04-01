@@ -1,0 +1,79 @@
+import unittest
+import sqlalchemy
+from sqlalchemy.orm import sessionmaker
+from online_eval import read_configs, connect_db, connect_kafka, evaluate_ratings, cleanup
+
+class TestOnlineEval(unittest.TestCase):
+
+    def test_config_read(self):
+        # Ensure the json file is loaded correctly
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        dbConf, kafkaConf = read_configs(config_path)
+        self.assertIn('username', dbConf.keys())
+        self.assertIn('password', dbConf.keys())
+        self.assertIn('db_name', dbConf.keys())
+        self.assertIn('host', dbConf.keys())
+        self.assertIn('port', dbConf.keys())
+        self.assertIn('topic_name', kafkaConf.keys())
+        self.assertIn('group_id', kafkaConf.keys())
+        self.assertIn('bootstrap_servers', kafkaConf.keys())
+    
+    def test_connect_db(self):
+        # ensure the connection is established and doesn't return Null.
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        dbConf, _ = read_configs(config_path)
+        con, meta = connect_db(dbConf)
+        
+        self.assertIsNotNone(con)
+        self.assertIsNotNone(meta)
+        con.dispose()
+    
+    def test_connect_kafka(self):
+        # ensure we can receive data from kafka server
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        _, kafkaConf = read_configs(config_path)
+        consumer = connect_kafka(kafkaConf)
+        
+        # there suppose to have at least "expect_min_msg" data in the data stream
+        count = 0
+        expect_min_msg = 1
+        for _ in consumer:
+            count +=1
+            if count == expect_min_msg:
+                break
+        self.assertEqual(count, expect_min_msg)
+        consumer.close()
+
+    def test_evaluate_ratings(self):
+        # ensure the data we insert to the db appear in it
+        # Read configs
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        dbConf, kafkaConf = read_configs(config_path)
+
+        # Connect to DB
+        con, meta = connect_db(dbConf)
+        Session = sessionmaker(bind=con)
+        session = Session()
+
+        # Get table from database
+        recommendations_table = meta.tables['recommendations']
+        rating_event_table = meta.tables['rating_event']
+        count1 = session.query(rating_event_table).count()
+
+        # Connect to Kafka
+        consumer = connect_kafka(kafkaConf)
+
+        # Set pointer to end of partition
+        consumer.poll()
+        consumer.seek_to_end()
+
+        # Begin online evaluation
+        killswitch = True
+        evaluate_ratings(recommendations_table, rating_event_table, consumer, con, killswitch)
+        count2 = session.query(rating_event_table).count()
+        self.assertGreater(count2, count1)
+        cleanup(consumer, con)
+
+
+if __name__ == "__main__":
+    unittest.main()

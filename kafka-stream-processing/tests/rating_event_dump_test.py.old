@@ -1,0 +1,70 @@
+import unittest
+from sqlalchemy.orm import sessionmaker
+from rating_event_dump import read_configs
+from rating_event_dump import read_configs, connect_db, connect_kafka, cleanup,toggle_killswitch
+from rating_event_dump import validate,validate_userid,validate_rating,valiate_year,validate_timestamp,dump_rating_event
+
+class Test_rating_event_dump(unittest.TestCase):
+    
+    def test_server_setting(self):
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        dbConf, kafkaConf, _ = read_configs(config_path)
+        self.assertIn('username', dbConf.keys())
+        self.assertIn('password', dbConf.keys())
+        self.assertIn('db_name', dbConf.keys())
+        self.assertIn('host', dbConf.keys())
+        self.assertIn('port', dbConf.keys())
+        self.assertIn('topic_name', kafkaConf.keys())
+        self.assertIn('group_id', kafkaConf.keys())
+        self.assertIn('bootstrap_servers', kafkaConf.keys())
+    
+    def test_connect_db(self):
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        dbConf, _, _ = read_configs(config_path)
+        con, meta = connect_db(dbConf)
+        self.assertIsNotNone(con)
+        self.assertIsNotNone(meta)
+    
+    def test_connect_kafka(self):
+        config_path = "/home/harshjai/movie-prediction-group-project-jurassicpark/confs/config.json"
+        _, kafkaConf,_ = read_configs(config_path)
+        consumer = connect_kafka(kafkaConf)
+        
+        # there suppose to have at least "expect_min_msg" data in the data stream
+        count = 0
+        expect_min_msg = 1
+        for _ in consumer:
+            count +=1
+            if count == expect_min_msg:
+                break
+        self.assertEqual(count, expect_min_msg)
+        consumer.close()
+        pass
+
+    def test_data_clearn(self):
+        # Test for negative values of timestamp, userid and rating
+        # Test for empty strings in the movieid 
+        # Test for string format issues in the movie id 
+        self.assertEqual(False,valiate_year('0'))
+        self.assertEqual(True,valiate_year('1996'))
+        self.assertEqual(False,valiate_year('199d6'))
+        self.assertEqual(False,valiate_year('19986'))
+        self.assertEqual(True,valiate_year('2020'))
+        self.assertEqual(True,valiate_year('1900'))
+        self.assertEqual(False,validate_rating('-5'))
+        self.assertEqual(False,validate_rating('-2'))
+        self.assertEqual(True,validate_rating('3'))
+        self.assertEqual(True,validate_rating('5'))
+        self.assertEqual(False,validate_rating('0'))
+        self.assertEqual(True,validate_timestamp(103242123))
+        self.assertEqual(False,validate_timestamp(0))
+        self.assertEqual(False,validate_userid(0))
+        self.assertEqual(True,validate_userid(100))
+        self.assertEqual(False,validate_userid(-100))
+        self.assertEqual(True,validate_userid('100'))
+        self.assertEqual(False,validate_userid('10ax0'))
+
+
+
+if __name__ == "__main__":
+    unittest.main()

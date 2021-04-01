@@ -1,0 +1,28 @@
+# NOTE: Enter passwords shared in email. Please update the password in config.json before executing the scripts.
+
+# Kafka Tunnel
+# Tunnel will go to background after entering password
+$ ssh -L 9092:localhost:9092 tunnel@128.2.204.215 -NTf
+
+# Login to PostgreSQL
+# psql -U <username> <database>
+$ psql -U teamjp recommendation_service
+
+# To terminate the scripts cleanly, you need to send a SIGTERM signal to the scripts. 
+# The SIGTERM handler will ensure that the kafka and database resources are released properly.
+# What you need to do is-
+1. Execute 'ps -eaf | grep <name of the script>.py' to get the pid for the running script. 
+2. Execute 'kill <pid>' to send SIGTERM to the process. 
+
+# While executing the script, if you get some exeception with the brokers, then restart the tunnel. 
+# Steps to restart the tunnel-
+1. Execute 'ps -eaf | grep tunnel' to get the pid of the tunnel running in the background. 
+2. Execute 'kill -9 <pid>' to send SIGKILL to the process. 
+
+# Execute scripts as nohup processes to ensure that they keep running even if your ssh session dies. 
+# Example - 
+$ nohup python3 online-eval.py &
+
+# Online Evalution 
+# The evaluation updates the recommendation table with positive outcome or negative outcome with respect to the ratings stream.
+# Subsequently we are running online-evaluation-logging using a chrontab job to run every day to log the performance of our model.

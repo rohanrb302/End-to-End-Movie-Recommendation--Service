@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prediction-webserver-deployment
+  labels:
+    app: prediction-webserver
+spec:
+  selector:
+    matchLabels:
+      app: prediction-webserver
+  template:
+    metadata:
+      labels:
+        app: prediction-webserver
+    spec:
+      containers:
+        - name: prediction-webserver
+          image: kartikri/seai-recommendation-system:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8082

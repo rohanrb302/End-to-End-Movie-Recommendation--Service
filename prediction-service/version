@@ -1,0 +1,3 @@
+# File holding version information for CI pipeline. Specify Docker tag on line 2, and the path to model files in s3 on line 3
+1.0.2
+training_output/2020-12-04_02:29:13/mappings.pkl,training_output/2020-12-04_02:29:13/recommendations.csv

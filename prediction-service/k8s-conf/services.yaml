@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: prediction-webserver-service
+spec:
+  selector:
+    app: prediction-webserver
+  ports:
+    - protocol: TCP
+      port: 8082
+      nodePort: 32321
+  type: NodePort

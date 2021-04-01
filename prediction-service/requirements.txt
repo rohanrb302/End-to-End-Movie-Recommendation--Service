@@ -1,0 +1,6 @@
+flask
+sqlalchemy
+numpy
+pandas
+psycopg2
+boto3
